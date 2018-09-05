@@ -3,7 +3,7 @@ import { CONSTRAINTS_FIELDS } from '../../../initializers'
 import { isTestInstance } from '../../core-utils'
 import { exists } from '../misc'
 
-function isActivityPubUrlValid (url: string) {
+function isUrlValid (url: string) {
   const isURLOptions = {
     require_host: true,
     require_tld: true,
@@ -17,7 +17,11 @@ function isActivityPubUrlValid (url: string) {
     isURLOptions.require_tld = false
   }
 
-  return exists(url) && validator.isURL('' + url, isURLOptions) && validator.isLength('' + url, CONSTRAINTS_FIELDS.ACTORS.URL)
+  return exists(url) && validator.isURL('' + url, isURLOptions)
+}
+
+function isActivityPubUrlValid (url: string) {
+  return isUrlValid(url) && validator.isLength('' + url, CONSTRAINTS_FIELDS.ACTORS.URL)
 }
 
 function isBaseActivityValid (activity: any, type: string) {
@@ -49,6 +53,7 @@ function setValidAttributedTo (obj: any) {
 }
 
 export {
+  isUrlValid,
   isActivityPubUrlValid,
   isBaseActivityValid,
   setValidAttributedTo

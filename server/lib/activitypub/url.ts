@@ -4,9 +4,14 @@ import { ActorFollowModel } from '../../models/activitypub/actor-follow'
 import { VideoModel } from '../../models/video/video'
 import { VideoAbuseModel } from '../../models/video/video-abuse'
 import { VideoCommentModel } from '../../models/video/video-comment'
+import { VideoFileModel } from '../../models/video/video-file'
 
 function getVideoActivityPubUrl (video: VideoModel) {
   return CONFIG.WEBSERVER.URL + '/videos/watch/' + video.uuid
+}
+
+function getVideoCacheFileActivityPubUrl (videoFile: VideoFileModel) {
+  return `${CONFIG.WEBSERVER.URL}/redundancy/videos/${videoFile.Video.uuid}/${videoFile.resolution}-${videoFile.fps}`
 }
 
 function getVideoCommentActivityPubUrl (video: VideoModel, videoComment: VideoCommentModel) {
@@ -101,5 +106,6 @@ export {
   getVideoSharesActivityPubUrl,
   getVideoCommentsActivityPubUrl,
   getVideoLikesActivityPubUrl,
-  getVideoDislikesActivityPubUrl
+  getVideoDislikesActivityPubUrl,
+  getVideoCacheFileActivityPubUrl
 }

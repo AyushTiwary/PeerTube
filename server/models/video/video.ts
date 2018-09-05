@@ -27,7 +27,7 @@ import {
   Table,
   UpdatedAt
 } from 'sequelize-typescript'
-import { VideoPrivacy, VideoResolution, VideoState } from '../../../shared'
+import { ActivityUrlObject, VideoPrivacy, VideoResolution, VideoState } from '../../../shared'
 import { VideoTorrentObject } from '../../../shared/models/activitypub/objects'
 import { Video, VideoDetails, VideoFile } from '../../../shared/models/videos'
 import { VideoFilter } from '../../../shared/models/videos/video-query.type'
@@ -633,6 +633,7 @@ export class VideoModel extends Model<VideoModel> {
       name: 'videoId',
       allowNull: false
     },
+    hooks: true,
     onDelete: 'cascade'
   })
   VideoFiles: VideoFileModel[]
@@ -1326,7 +1327,8 @@ export class VideoModel extends Model<VideoModel> {
         [ CONFIG.WEBSERVER.URL + '/tracker/announce' ]
       ],
       urlList: [
-        CONFIG.WEBSERVER.URL + STATIC_PATHS.WEBSEED + this.getVideoFilename(videoFile)
+        CONFIG.WEBSERVER.URL + STATIC_PATHS.WEBSEED + this.getVideoFilename(videoFile),
+        'http://localhost:9001' + STATIC_PATHS.WEBSEED + this.getVideoFilename(videoFile)
       ]
     }
 
@@ -1535,11 +1537,11 @@ export class VideoModel extends Model<VideoModel> {
       }
     }
 
-    const url = []
+    const url: ActivityUrlObject[] = []
     for (const file of this.VideoFiles) {
       url.push({
         type: 'Link',
-        mimeType: VIDEO_EXT_MIMETYPE[ file.extname ],
+        mimeType: VIDEO_EXT_MIMETYPE[ file.extname ] as any,
         href: this.getVideoFileUrl(file, baseUrlHttp),
         height: file.resolution,
         size: file.size,
@@ -1548,14 +1550,14 @@ export class VideoModel extends Model<VideoModel> {
 
       url.push({
         type: 'Link',
-        mimeType: 'application/x-bittorrent',
+        mimeType: 'application/x-bittorrent' as 'application/x-bittorrent',
         href: this.getTorrentUrl(file, baseUrlHttp),
         height: file.resolution
       })
 
       url.push({
         type: 'Link',
-        mimeType: 'application/x-bittorrent;x-scheme-handler/magnet',
+        mimeType: 'application/x-bittorrent;x-scheme-handler/magnet' as 'application/x-bittorrent;x-scheme-handler/magnet',
         href: this.generateMagnetUri(file, baseUrlHttp, baseUrlWs),
         height: file.resolution
       })
@@ -1796,7 +1798,7 @@ export class VideoModel extends Model<VideoModel> {
       (now - updatedAtTime) > ACTIVITY_PUB.VIDEO_REFRESH_INTERVAL
   }
 
-  private getBaseUrls () {
+  getBaseUrls () {
     let baseUrlHttp
     let baseUrlWs
 
@@ -1811,30 +1813,12 @@ export class VideoModel extends Model<VideoModel> {
     return { baseUrlHttp, baseUrlWs }
   }
 
-  private getThumbnailUrl (baseUrlHttp: string) {
-    return baseUrlHttp + STATIC_PATHS.THUMBNAILS + this.getThumbnailName()
-  }
-
-  private getTorrentUrl (videoFile: VideoFileModel, baseUrlHttp: string) {
-    return baseUrlHttp + STATIC_PATHS.TORRENTS + this.getTorrentFileName(videoFile)
-  }
-
-  private getTorrentDownloadUrl (videoFile: VideoFileModel, baseUrlHttp: string) {
-    return baseUrlHttp + STATIC_DOWNLOAD_PATHS.TORRENTS + this.getTorrentFileName(videoFile)
-  }
-
-  private getVideoFileUrl (videoFile: VideoFileModel, baseUrlHttp: string) {
-    return baseUrlHttp + STATIC_PATHS.WEBSEED + this.getVideoFilename(videoFile)
-  }
-
-  private getVideoFileDownloadUrl (videoFile: VideoFileModel, baseUrlHttp: string) {
-    return baseUrlHttp + STATIC_DOWNLOAD_PATHS.VIDEOS + this.getVideoFilename(videoFile)
-  }
-
-  private generateMagnetUri (videoFile: VideoFileModel, baseUrlHttp: string, baseUrlWs: string) {
+  generateMagnetUri (videoFile: VideoFileModel, baseUrlHttp: string, baseUrlWs: string) {
     const xs = this.getTorrentUrl(videoFile, baseUrlHttp)
     const announce = [ baseUrlWs + '/tracker/socket', baseUrlHttp + '/tracker/announce' ]
-    const urlList = [ this.getVideoFileUrl(videoFile, baseUrlHttp) ]
+    const urlList = [
+      this.getVideoFileUrl(videoFile, baseUrlHttp)
+    ]
 
     const magnetHash = {
       xs,
@@ -1845,5 +1829,25 @@ export class VideoModel extends Model<VideoModel> {
     }
 
     return magnetUtil.encode(magnetHash)
+  }
+
+  getThumbnailUrl (baseUrlHttp: string) {
+    return baseUrlHttp + STATIC_PATHS.THUMBNAILS + this.getThumbnailName()
+  }
+
+  getTorrentUrl (videoFile: VideoFileModel, baseUrlHttp: string) {
+    return baseUrlHttp + STATIC_PATHS.TORRENTS + this.getTorrentFileName(videoFile)
+  }
+
+  getTorrentDownloadUrl (videoFile: VideoFileModel, baseUrlHttp: string) {
+    return baseUrlHttp + STATIC_DOWNLOAD_PATHS.TORRENTS + this.getTorrentFileName(videoFile)
+  }
+
+  getVideoFileUrl (videoFile: VideoFileModel, baseUrlHttp: string) {
+    return baseUrlHttp + STATIC_PATHS.WEBSEED + this.getVideoFilename(videoFile)
+  }
+
+  getVideoFileDownloadUrl (videoFile: VideoFileModel, baseUrlHttp: string) {
+    return baseUrlHttp + STATIC_DOWNLOAD_PATHS.VIDEOS + this.getVideoFilename(videoFile)
   }
 }

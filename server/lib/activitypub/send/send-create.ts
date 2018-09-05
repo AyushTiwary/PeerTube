@@ -17,6 +17,8 @@ import {
   getVideoCommentAudience
 } from '../audience'
 import { logger } from '../../../helpers/logger'
+import { VideoFileModel } from '../../../models/video/video-file'
+import { VideosRedundancyModel } from '../../../models/redundancy/videos-redundancy'
 
 async function sendCreateVideo (video: VideoModel, t: Transaction) {
   if (video.privacy === VideoPrivacy.PRIVATE) return undefined
@@ -32,7 +34,7 @@ async function sendCreateVideo (video: VideoModel, t: Transaction) {
   return broadcastToFollowers(data, byActor, [ byActor ], t)
 }
 
-async function sendVideoAbuse (byActor: ActorModel, videoAbuse: VideoAbuseModel, video: VideoModel, t: Transaction) {
+async function sendVideoAbuse (byActor: ActorModel, videoAbuse: VideoAbuseModel, video: VideoModel) {
   if (!video.VideoChannel.Account.Actor.serverId) return // Local
 
   const url = getVideoAbuseActivityPubUrl(videoAbuse)
@@ -41,6 +43,20 @@ async function sendVideoAbuse (byActor: ActorModel, videoAbuse: VideoAbuseModel,
 
   const audience = { to: [ video.VideoChannel.Account.Actor.url ], cc: [] }
   const data = createActivityData(url, byActor, videoAbuse.toActivityPubObject(), audience)
+
+  return unicastTo(data, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
+}
+
+async function sendCreateCacheFile (byActor: ActorModel, fileRedundancy: VideosRedundancyModel) {
+  logger.info('Creating job to send file cache of %s.', fileRedundancy.url)
+
+  const redundancyObject = fileRedundancy.toActivityPubObject()
+
+  const video = await VideoModel.loadAndPopulateAccountAndServerAndTags(fileRedundancy.VideoFile.Video.id)
+  const actorsInvolvedInVideo = await getActorsInvolvedInVideo(video, undefined)
+
+  const audience = getVideoAudience(video, actorsInvolvedInVideo)
+  const data = createActivityData(fileRedundancy.url, byActor, redundancyObject, audience)
 
   return unicastTo(data, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
 }
@@ -171,5 +187,6 @@ export {
   sendCreateView,
   sendCreateDislike,
   createDislikeActivityData,
-  sendCreateVideoComment
+  sendCreateVideoComment,
+  sendCreateCacheFile
 }

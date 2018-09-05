@@ -66,6 +66,12 @@ trending:
   videos:
     interval_days: 7 # Compute trending videos for the last x days
 
+redundancy:
+  videos:
+    -
+      sizeGB: 1
+      strategy: 'most-views'
+
 cache:
   previews:
     size: 500 # Max number of previews you want to cache

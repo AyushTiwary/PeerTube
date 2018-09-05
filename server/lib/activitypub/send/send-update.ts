@@ -7,11 +7,11 @@ import { VideoModel } from '../../../models/video/video'
 import { VideoChannelModel } from '../../../models/video/video-channel'
 import { VideoShareModel } from '../../../models/video/video-share'
 import { getUpdateActivityPubUrl } from '../url'
-import { broadcastToFollowers } from './utils'
-import { audiencify, getAudience } from '../audience'
+import { broadcastToFollowers, unicastTo } from './utils'
+import { audiencify, getActorsInvolvedInVideo, getAudience, getObjectFollowersAudience } from '../audience'
 import { logger } from '../../../helpers/logger'
-import { videoFeedsValidator } from '../../../middlewares/validators'
 import { VideoCaptionModel } from '../../../models/video/video-caption'
+import { VideosRedundancyModel } from '../../../models/redundancy/videos-redundancy'
 
 async function sendUpdateVideo (video: VideoModel, t: Transaction, overrodeByActor?: ActorModel) {
   logger.info('Creating job to update video %s.', video.url)
@@ -58,11 +58,28 @@ async function sendUpdateActor (accountOrChannel: AccountModel | VideoChannelMod
   return broadcastToFollowers(data, byActor, actorsInvolved, t)
 }
 
+async function sendUpdateCacheFile (byActor: ActorModel, redundancyModel: VideosRedundancyModel) {
+  logger.info('Creating job to update cache file %s.', redundancyModel.url)
+
+  const url = getUpdateActivityPubUrl(redundancyModel.url, redundancyModel.updatedAt.toISOString())
+  const video = await VideoModel.loadAndPopulateAccountAndServerAndTags(redundancyModel.VideoFile.Video.id)
+
+  const redundancyObject = redundancyModel.toActivityPubObject()
+
+  const accountsInvolvedInVideo = await getActorsInvolvedInVideo(video, undefined)
+  const audience = getObjectFollowersAudience(accountsInvolvedInVideo)
+
+  const data = updateActivityData(url, byActor, redundancyObject, audience)
+  return unicastTo(data, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
+
+}
+
 // ---------------------------------------------------------------------------
 
 export {
   sendUpdateActor,
-  sendUpdateVideo
+  sendUpdateVideo,
+  sendUpdateCacheFile
 }
 
 // ---------------------------------------------------------------------------

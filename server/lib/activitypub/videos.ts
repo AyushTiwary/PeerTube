@@ -3,12 +3,12 @@ import * as sequelize from 'sequelize'
 import * as magnetUtil from 'magnet-uri'
 import { join } from 'path'
 import * as request from 'request'
-import { ActivityIconObject, VideoState } from '../../../shared/index'
+import { ActivityIconObject, ActivityVideoUrlObject, VideoState, ActivityUrlObject } from '../../../shared/index'
 import { VideoTorrentObject } from '../../../shared/models/activitypub/objects'
 import { VideoPrivacy } from '../../../shared/models/videos'
 import { sanitizeAndCheckVideoTorrentObject } from '../../helpers/custom-validators/activitypub/videos'
 import { isVideoFileInfoHashValid } from '../../helpers/custom-validators/videos'
-import { resetSequelizeInstance, retryTransactionWrapper, updateInstanceWithAnother } from '../../helpers/database-utils'
+import { resetSequelizeInstance, retryTransactionWrapper } from '../../helpers/database-utils'
 import { logger } from '../../helpers/logger'
 import { doRequest, doRequestAndSaveToFile } from '../../helpers/requests'
 import { ACTIVITY_PUB, CONFIG, REMOTE_SCHEME, sequelizeTypescript, VIDEO_MIMETYPE_EXT } from '../../initializers'
@@ -17,7 +17,7 @@ import { TagModel } from '../../models/video/tag'
 import { VideoModel } from '../../models/video/video'
 import { VideoChannelModel } from '../../models/video/video-channel'
 import { VideoFileModel } from '../../models/video/video-file'
-import { getOrCreateActorAndServerAndModel, updateActorAvatarInstance } from './actor'
+import { getOrCreateActorAndServerAndModel } from './actor'
 import { addVideoComments } from './video-comments'
 import { crawlCollectionPage } from './crawl'
 import { sendCreateVideo, sendUpdateVideo } from './send'
@@ -25,7 +25,6 @@ import { isArray } from '../../helpers/custom-validators/misc'
 import { VideoCaptionModel } from '../../models/video/video-caption'
 import { JobQueue } from '../job-queue'
 import { ActivitypubHttpFetcherPayload } from '../job-queue/handlers/activitypub-http-fetcher'
-import { getUrlFromWebfinger } from '../../helpers/webfinger'
 import { createRates } from './video-rates'
 import { addVideoShares, shareVideoByServerAndChannel } from './share'
 import { AccountModel } from '../../models/account/account'
@@ -137,10 +136,7 @@ async function videoActivityObjectToDBAttributes (
 }
 
 function videoFileActivityUrlToDBAttributes (videoCreated: VideoModel, videoObject: VideoTorrentObject) {
-  const mimeTypes = Object.keys(VIDEO_MIMETYPE_EXT)
-  const fileUrls = videoObject.url.filter(u => {
-    return mimeTypes.indexOf(u.mimeType) !== -1 && u.mimeType.startsWith('video/')
-  })
+  const fileUrls = videoObject.url.filter(u => isActivityVideoUrlObject(u)) as ActivityVideoUrlObject[]
 
   if (fileUrls.length === 0) {
     throw new Error('Cannot find video files for ' + videoCreated.url)
@@ -443,4 +439,12 @@ export {
   getOrCreateVideoChannelFromVideoObject,
   addVideoShares,
   createRates
+}
+
+// ---------------------------------------------------------------------------
+
+function isActivityVideoUrlObject (url: ActivityUrlObject): url is ActivityVideoUrlObject {
+  const mimeTypes = Object.keys(VIDEO_MIMETYPE_EXT)
+
+  return mimeTypes.indexOf(url.mimeType) !== -1 && url.mimeType.startsWith('video/')
 }

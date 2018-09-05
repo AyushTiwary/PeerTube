@@ -1,6 +1,6 @@
 import { IConfig } from 'config'
 import { dirname, join } from 'path'
-import { JobType, VideoRateType, VideoState } from '../../shared/models'
+import { JobType, VideoRateType, VideoState, VideosRedundancy } from '../../shared/models'
 import { ActivityPubActorType } from '../../shared/models/activitypub'
 import { FollowState } from '../../shared/models/actors'
 import { VideoAbuseState, VideoImportState, VideoPrivacy } from '../../shared/models/videos'
@@ -137,7 +137,8 @@ let SCHEDULER_INTERVALS_MS = {
   badActorFollow: 60000 * 60, // 1 hour
   removeOldJobs: 60000 * 60, // 1 hour
   updateVideos: 60000, // 1 minute
-  youtubeDLUpdate: 60000 * 60 * 24 // 1 day
+  youtubeDLUpdate: 60000 * 60 * 24, // 1 day
+  videosRedundancy: 60000 * 2 // 2 hours
 }
 
 // ---------------------------------------------------------------------------
@@ -207,6 +208,9 @@ const CONFIG = {
     VIDEOS: {
       INTERVAL_DAYS: config.get<number>('trending.videos.interval_days')
     }
+  },
+  REDUNDANCY: {
+    VIDEOS: config.get<VideosRedundancy[]>('redundancy.videos')
   },
   ADMIN: {
     get EMAIL () { return config.get<string>('admin.email') }
@@ -320,6 +324,9 @@ const CONSTRAINTS_FIELDS = {
         max: 1024 * 200 // 200 KB
       }
     }
+  },
+  VIDEOS_REDUNDANCY: {
+    URL: { min: 3, max: 2000 } // Length
   },
   VIDEOS: {
     NAME: { min: 3, max: 120 }, // Length
@@ -584,6 +591,12 @@ const CACHE = {
   }
 }
 
+const REDUNDANCY = {
+  VIDEOS: {
+    EXPIRES_AFTER_MS: 48 * 3600 * 1000 // 2 days
+  }
+}
+
 const ACCEPT_HEADERS = [ 'html', 'application/json' ].concat(ACTIVITY_PUB.POTENTIAL_ACCEPT_HEADERS)
 
 // ---------------------------------------------------------------------------
@@ -629,6 +642,7 @@ if (isTestInstance() === true) {
   SCHEDULER_INTERVALS_MS.badActorFollow = 10000
   SCHEDULER_INTERVALS_MS.removeOldJobs = 10000
   SCHEDULER_INTERVALS_MS.updateVideos = 5000
+  SCHEDULER_INTERVALS_MS.videosRedundancy = 1000
   REPEAT_JOBS['videos-views'] = { every: 5000 }
 
   VIDEO_VIEW_LIFETIME = 1000 // 1 second
@@ -653,6 +667,7 @@ export {
   CONFIG,
   CONSTRAINTS_FIELDS,
   EMBED_SIZE,
+  REDUNDANCY,
   JOB_CONCURRENCY,
   JOB_ATTEMPTS,
   LAST_MIGRATION_VERSION,

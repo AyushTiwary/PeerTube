@@ -5,7 +5,7 @@ import { createWriteStream, remove } from 'fs-extra'
 import { CONFIG } from '../initializers'
 import { join } from 'path'
 
-function downloadWebTorrentVideo (target: { magnetUri: string, torrentName: string }) {
+function downloadWebTorrentVideo (target: { magnetUri: string, torrentName?: string }) {
   const id = target.magnetUri || target.torrentName
 
   const path = generateVideoTmpPath(id)
