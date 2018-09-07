@@ -76,7 +76,13 @@ export const unusedActorAttributesForAPI = [
       },
       {
         model: () => VideoChannelModel.unscoped(),
-        required: false
+        required: false,
+        include: [
+          {
+            model: () => AccountModel,
+            required: true
+          }
+        ]
       },
       {
         model: () => ServerModel,

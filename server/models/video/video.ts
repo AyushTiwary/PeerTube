@@ -33,7 +33,7 @@ import { Video, VideoDetails, VideoFile } from '../../../shared/models/videos'
 import { VideoFilter } from '../../../shared/models/videos/video-query.type'
 import { createTorrentPromise, peertubeTruncate } from '../../helpers/core-utils'
 import { isActivityPubUrlValid } from '../../helpers/custom-validators/activitypub/misc'
-import { isBooleanValid } from '../../helpers/custom-validators/misc'
+import { isArray, isBooleanValid } from '../../helpers/custom-validators/misc'
 import {
   isVideoCategoryValid,
   isVideoDescriptionValid,
@@ -90,6 +90,7 @@ import { VideoCaptionModel } from './video-caption'
 import { VideoBlacklistModel } from './video-blacklist'
 import { copy, remove, rename, stat, writeFile } from 'fs-extra'
 import { VideoViewModel } from './video-views'
+import { VideoRedundancyModel } from '../redundancy/video-redundancy'
 
 // FIXME: Define indexes here because there is an issue with TS and Sequelize.literal when called directly in the annotation
 const indexes: Sequelize.DefineIndexesOptions[] = [
@@ -470,7 +471,13 @@ type AvailableForListIDsOptions = {
     include: [
       {
         model: () => VideoFileModel.unscoped(),
-        required: false
+        required: false,
+        include: [
+          {
+            model: () => VideoRedundancyModel.unscoped(),
+            required: false
+          }
+        ]
       }
     ]
   },
@@ -1816,9 +1823,10 @@ export class VideoModel extends Model<VideoModel> {
   generateMagnetUri (videoFile: VideoFileModel, baseUrlHttp: string, baseUrlWs: string) {
     const xs = this.getTorrentUrl(videoFile, baseUrlHttp)
     const announce = [ baseUrlWs + '/tracker/socket', baseUrlHttp + '/tracker/announce' ]
-    const urlList = [
-      this.getVideoFileUrl(videoFile, baseUrlHttp)
-    ]
+    let urlList = [ this.getVideoFileUrl(videoFile, baseUrlHttp) ]
+
+    const redundancies = videoFile.RedundancyVideos
+    if (isArray(redundancies)) urlList = urlList.concat(redundancies.map(r => r.fileUrl))
 
     const magnetHash = {
       xs,

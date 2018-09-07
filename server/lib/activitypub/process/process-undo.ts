@@ -11,7 +11,7 @@ import { ActorFollowModel } from '../../../models/activitypub/actor-follow'
 import { forwardVideoRelatedActivity } from '../send/utils'
 import { getOrCreateVideoAndAccountAndChannel } from '../videos'
 import { VideoShareModel } from '../../../models/video/video-share'
-import { VideosRedundancyModel } from '../../../models/redundancy/videos-redundancy'
+import { VideoRedundancyModel } from '../../../models/redundancy/video-redundancy'
 
 async function processUndoActivity (activity: ActivityUndo) {
   const activityToUndo = activity.object
@@ -108,7 +108,7 @@ async function processUndoCacheFile (actorUrl: string, activity: ActivityUndo) {
     const byActor = await ActorModel.loadByUrl(actorUrl)
     if (!byActor) throw new Error('Unknown actor ' + actorUrl)
 
-    const cacheFile = await VideosRedundancyModel.loadByUrl(cacheFileObject.id)
+    const cacheFile = await VideoRedundancyModel.loadByUrl(cacheFileObject.id)
     if (!cacheFile) throw new Error('Unknown video cache ' + cacheFile.url)
 
     await cacheFile.destroy()

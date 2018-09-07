@@ -23,7 +23,7 @@ import { CONSTRAINTS_FIELDS } from '../../initializers'
 import { throwIfNotValid } from '../utils'
 import { VideoModel } from './video'
 import * as Sequelize from 'sequelize'
-import { VideosRedundancyModel } from '../redundancy/videos-redundancy'
+import { VideoRedundancyModel } from '../redundancy/video-redundancy'
 
 @Table({
   tableName: 'videoFile',
@@ -84,14 +84,14 @@ export class VideoFileModel extends Model<VideoFileModel> {
   })
   Video: VideoModel
 
-  @HasMany(() => VideosRedundancyModel, {
+  @HasMany(() => VideoRedundancyModel, {
     foreignKey: {
       allowNull: false
     },
     onDelete: 'CASCADE',
     hooks: true
   })
-  RedundancyVideos: VideosRedundancyModel[]
+  RedundancyVideos: VideoRedundancyModel[]
 
   static isInfohashExists (infoHash: string) {
     const query = 'SELECT 1 FROM "videoFile" WHERE "infoHash" = $infoHash LIMIT 1'

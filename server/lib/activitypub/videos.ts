@@ -327,8 +327,11 @@ async function refreshVideoIfNeeded (video: VideoModel): Promise<VideoModel> {
 
     const channelActor = await getOrCreateVideoChannelFromVideoObject(videoObject)
     const account = await AccountModel.load(channelActor.VideoChannel.accountId)
-    return updateVideoFromAP(video, videoObject, account.Actor, channelActor)
+    await updateVideoFromAP(video, videoObject, account.Actor, channelActor)
 
+    video.VideoChannel = channelActor.VideoChannel
+
+    return video
   } catch (err) {
     logger.warn('Cannot refresh video.', { err })
     return video

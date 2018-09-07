@@ -19,7 +19,7 @@ import { likeActivityData } from './send-like'
 import { VideoShareModel } from '../../../models/video/video-share'
 import { buildVideoAnnounce } from './send-announce'
 import { logger } from '../../../helpers/logger'
-import { VideosRedundancyModel } from '../../../models/redundancy/videos-redundancy'
+import { VideoRedundancyModel } from '../../../models/redundancy/video-redundancy'
 
 async function sendUndoFollow (actorFollow: ActorFollowModel, t: Transaction) {
   const me = actorFollow.ActorFollower
@@ -99,7 +99,7 @@ async function sendUndoAnnounce (byActor: ActorModel, videoShare: VideoShareMode
   return broadcastToFollowers(data, byActor, actorsInvolvedInVideo, t, followersException)
 }
 
-async function sendUndoCacheFile (byActor: ActorModel, redundancyModel: VideosRedundancyModel, t: Transaction) {
+async function sendUndoCacheFile (byActor: ActorModel, redundancyModel: VideoRedundancyModel, t: Transaction) {
   logger.info('Creating job to undo cache file %s.', redundancyModel.url)
 
   const undoUrl = getUndoActivityPubUrl(redundancyModel.url)

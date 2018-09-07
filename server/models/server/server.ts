@@ -1,4 +1,4 @@
-import { AllowNull, Column, CreatedAt, HasMany, Is, Model, Table, UpdatedAt } from 'sequelize-typescript'
+import { AllowNull, Column, CreatedAt, Default, HasMany, Is, Model, Table, UpdatedAt } from 'sequelize-typescript'
 import { isHostValid } from '../../helpers/custom-validators/servers'
 import { ActorModel } from '../activitypub/actor'
 import { throwIfNotValid } from '../utils'
@@ -18,6 +18,11 @@ export class ServerModel extends Model<ServerModel> {
   @Is('Host', value => throwIfNotValid(value, isHostValid, 'valid host'))
   @Column
   host: string
+
+  @AllowNull(false)
+  @Default(false)
+  @Column
+  redundancyAllowed: boolean
 
   @CreatedAt
   createdAt: Date

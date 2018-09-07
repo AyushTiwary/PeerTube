@@ -15,7 +15,7 @@ let config: IConfig = require('config')
 
 // ---------------------------------------------------------------------------
 
-const LAST_MIGRATION_VERSION = 265
+const LAST_MIGRATION_VERSION = 270
 
 // ---------------------------------------------------------------------------
 
@@ -593,7 +593,8 @@ const CACHE = {
 
 const REDUNDANCY = {
   VIDEOS: {
-    EXPIRES_AFTER_MS: 48 * 3600 * 1000 // 2 days
+    EXPIRES_AFTER_MS: 48 * 3600 * 1000, // 2 days
+    RANDOMIZED_FACTOR: 5
   }
 }
 
@@ -642,7 +643,7 @@ if (isTestInstance() === true) {
   SCHEDULER_INTERVALS_MS.badActorFollow = 10000
   SCHEDULER_INTERVALS_MS.removeOldJobs = 10000
   SCHEDULER_INTERVALS_MS.updateVideos = 5000
-  SCHEDULER_INTERVALS_MS.videosRedundancy = 1000
+  SCHEDULER_INTERVALS_MS.videosRedundancy = 5000
   REPEAT_JOBS['videos-views'] = { every: 5000 }
 
   VIDEO_VIEW_LIFETIME = 1000 // 1 second

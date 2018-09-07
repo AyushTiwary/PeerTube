@@ -26,6 +26,8 @@ import {
   getVideoSharesActivityPubUrl
 } from '../../lib/activitypub'
 import { VideoCaptionModel } from '../../models/video/video-caption'
+import { videoRedundancyGetValidator } from '../../middlewares/validators/videos-redundancy'
+import { getServerActor } from '../../helpers/utils'
 
 const activityPubClientRouter = express.Router()
 
@@ -91,6 +93,11 @@ activityPubClientRouter.get('/video-channels/:name/followers',
 activityPubClientRouter.get('/video-channels/:name/following',
   executeIfActivityPub(asyncMiddleware(localVideoChannelValidator)),
   executeIfActivityPub(asyncMiddleware(videoChannelFollowingController))
+)
+
+activityPubClientRouter.get('/redundancy/videos/:videoId/:resolution([0-9]+)(-:fps([0-9]+))?',
+  executeIfActivityPub(asyncMiddleware(videoRedundancyGetValidator)),
+  executeIfActivityPub(asyncMiddleware(videoRedundancyController))
 )
 
 // ---------------------------------------------------------------------------
@@ -224,6 +231,21 @@ async function videoCommentController (req: express.Request, res: express.Respon
   }
 
   return activityPubResponse(activityPubContextify(videoCommentObject), res)
+}
+
+async function videoRedundancyController (req: express.Request, res: express.Response) {
+  const videoRedundancy = res.locals.videoRedundancy
+  const serverActor = await getServerActor()
+
+  const audience = getAudience(serverActor)
+  const object = audiencify(videoRedundancy.toActivityPubObject(), audience)
+
+  if (req.path.endsWith('/activity')) {
+    const data = createActivityData(videoRedundancy.url, serverActor, object, audience)
+    return activityPubResponse(activityPubContextify(data), res)
+  }
+
+  return activityPubResponse(activityPubContextify(object), res)
 }
 
 // ---------------------------------------------------------------------------

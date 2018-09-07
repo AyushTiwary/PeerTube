@@ -37,10 +37,6 @@ const videosPhysicalPath = CONFIG.STORAGE.VIDEOS_DIR
 staticRouter.use(
   STATIC_PATHS.WEBSEED,
   cors(),
-  (req, res, next) => {
-    if (CONFIG.WEBSERVER.PORT === 9001) setTimeout(next, 5000)
-    else next()
-  },
   express.static(videosPhysicalPath)
 )
 staticRouter.use(

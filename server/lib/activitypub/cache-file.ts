@@ -2,7 +2,7 @@ import { CacheFileObject } from '../../../shared/index'
 import { VideoModel } from '../../models/video/video'
 import { ActorModel } from '../../models/activitypub/actor'
 import { sequelizeTypescript } from '../../initializers'
-import { VideosRedundancyModel } from '../../models/redundancy/videos-redundancy'
+import { VideoRedundancyModel } from '../../models/redundancy/video-redundancy'
 
 function cacheFileActivityObjectToDBAttributes (cacheFileObject: CacheFileObject, video: VideoModel, byActor: ActorModel) {
   const url = cacheFileObject.url
@@ -27,11 +27,11 @@ function createCacheFile (cacheFileObject: CacheFileObject, video: VideoModel, b
   return sequelizeTypescript.transaction(async t => {
     const attributes = cacheFileActivityObjectToDBAttributes(cacheFileObject, video, byActor)
 
-    return VideosRedundancyModel.create(attributes, { transaction: t })
+    return VideoRedundancyModel.create(attributes, { transaction: t })
   })
 }
 
-function updateCacheFile (cacheFileObject: CacheFileObject, redundancyModel: VideosRedundancyModel, byActor: ActorModel) {
+function updateCacheFile (cacheFileObject: CacheFileObject, redundancyModel: VideoRedundancyModel, byActor: ActorModel) {
   const attributes = cacheFileActivityObjectToDBAttributes(cacheFileObject, redundancyModel.VideoFile.Video, byActor)
 
   redundancyModel.set('expires', attributes.expiresOn)

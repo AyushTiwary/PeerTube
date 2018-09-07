@@ -17,8 +17,7 @@ import {
   getVideoCommentAudience
 } from '../audience'
 import { logger } from '../../../helpers/logger'
-import { VideoFileModel } from '../../../models/video/video-file'
-import { VideosRedundancyModel } from '../../../models/redundancy/videos-redundancy'
+import { VideoRedundancyModel } from '../../../models/redundancy/video-redundancy'
 
 async function sendCreateVideo (video: VideoModel, t: Transaction) {
   if (video.privacy === VideoPrivacy.PRIVATE) return undefined
@@ -47,7 +46,7 @@ async function sendVideoAbuse (byActor: ActorModel, videoAbuse: VideoAbuseModel,
   return unicastTo(data, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
 }
 
-async function sendCreateCacheFile (byActor: ActorModel, fileRedundancy: VideosRedundancyModel) {
+async function sendCreateCacheFile (byActor: ActorModel, fileRedundancy: VideoRedundancyModel) {
   logger.info('Creating job to send file cache of %s.', fileRedundancy.url)
 
   const redundancyObject = fileRedundancy.toActivityPubObject()

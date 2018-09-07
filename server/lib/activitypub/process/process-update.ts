@@ -7,10 +7,10 @@ import { AccountModel } from '../../../models/account/account'
 import { ActorModel } from '../../../models/activitypub/actor'
 import { VideoChannelModel } from '../../../models/video/video-channel'
 import { fetchAvatarIfExists, getOrCreateActorAndServerAndModel, updateActorAvatarInstance, updateActorInstance } from '../actor'
-import { getOrCreateVideoAndAccountAndChannel, getOrCreateVideoChannelFromVideoObject, updateVideoFromAP } from '../videos'
+import { getOrCreateVideoAndAccountAndChannel, updateVideoFromAP } from '../videos'
 import { sanitizeAndCheckVideoTorrentObject } from '../../../helpers/custom-validators/activitypub/videos'
 import { isCacheFileObjectValid } from '../../../helpers/custom-validators/activitypub/cache-file'
-import { VideosRedundancyModel } from '../../../models/redundancy/videos-redundancy'
+import { VideoRedundancyModel } from '../../../models/redundancy/video-redundancy'
 import { createCacheFile, updateCacheFile } from '../cache-file'
 
 async function processUpdateActivity (activity: ActivityUpdate) {
@@ -61,7 +61,7 @@ async function processUpdateCacheFile (byActor: ActorModel, activity: ActivityUp
     return undefined
   }
 
-  const redundancyModel = await VideosRedundancyModel.loadByUrl(cacheFileObject.id)
+  const redundancyModel = await VideoRedundancyModel.loadByUrl(cacheFileObject.id)
   if (!redundancyModel) {
     const { video } = await getOrCreateVideoAndAccountAndChannel(cacheFileObject.id)
     return createCacheFile(cacheFileObject, video, byActor)

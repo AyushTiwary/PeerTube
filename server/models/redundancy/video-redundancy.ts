@@ -24,6 +24,10 @@ import { VideoModel } from '../video/video'
 import { VideoRedundancyStrategy } from '../../../shared/models/redundancy'
 import { logger } from '../../helpers/logger'
 import { CacheFileObject } from '../../../shared'
+import { VideoChannelModel } from '../video/video-channel'
+import { ServerModel } from '../server/server'
+import { sample } from 'lodash'
+import { isTestInstance } from '../../helpers/core-utils'
 
 export enum ScopeNames {
   WITH_VIDEO = 'WITH_VIDEO'
@@ -47,7 +51,7 @@ export enum ScopeNames {
 })
 
 @Table({
-  tableName: 'videosRedundancy',
+  tableName: 'videoRedundancy',
   indexes: [
     {
       fields: [ 'videoFileId' ]
@@ -61,7 +65,7 @@ export enum ScopeNames {
     }
   ]
 })
-export class VideosRedundancyModel extends Model<VideosRedundancyModel> {
+export class VideoRedundancyModel extends Model<VideoRedundancyModel> {
 
   @CreatedAt
   createdAt: Date
@@ -70,17 +74,16 @@ export class VideosRedundancyModel extends Model<VideosRedundancyModel> {
   updatedAt: Date
 
   @AllowNull(false)
-  @Is('VideosRedundancyExpiresOn', value => throwIfNotValid(value, isDateValid, 'expiresOn'))
   @Column
   expiresOn: Date
 
   @AllowNull(false)
-  @Is('VideosRedundancyFileUrl', value => throwIfNotValid(value, isUrlValid, 'fileUrl'))
+  @Is('VideoRedundancyFileUrl', value => throwIfNotValid(value, isUrlValid, 'fileUrl'))
   @Column(DataType.STRING(CONSTRAINTS_FIELDS.VIDEOS_REDUNDANCY.URL.max))
   fileUrl: string
 
   @AllowNull(false)
-  @Is('VideosRedundancyUrl', value => throwIfNotValid(value, isActivityPubUrlValid, 'url'))
+  @Is('VideoRedundancyUrl', value => throwIfNotValid(value, isActivityPubUrlValid, 'url'))
   @Column(DataType.STRING(CONSTRAINTS_FIELDS.VIDEOS_REDUNDANCY.URL.max))
   url: string
 
@@ -113,7 +116,7 @@ export class VideosRedundancyModel extends Model<VideosRedundancyModel> {
   Actor: ActorModel
 
   @AfterDestroy
-  static removeFilesAndSendDelete (instance: VideosRedundancyModel) {
+  static removeFilesAndSendDelete (instance: VideoRedundancyModel) {
     // Not us
     if (!instance.strategy) return
 
@@ -129,7 +132,7 @@ export class VideosRedundancyModel extends Model<VideosRedundancyModel> {
       }
     }
 
-    return VideosRedundancyModel.findOne(query)
+    return VideoRedundancyModel.scope(ScopeNames.WITH_VIDEO).findOne(query)
   }
 
   static loadByUrl (url: string) {
@@ -139,26 +142,53 @@ export class VideosRedundancyModel extends Model<VideosRedundancyModel> {
       }
     }
 
-    return VideosRedundancyModel.findOne(query)
+    return VideoRedundancyModel.findOne(query)
   }
 
-  static findMostViewToDuplicate () {
+  static async findMostViewToDuplicate (randomizedFactor: number) {
+    // On VideoModel!
     const query = {
+      logging: !isTestInstance(),
+      limit: randomizedFactor,
       order: [ [ 'views', 'DESC' ] ],
       include: [
         {
-          model: VideoFileModel,
+          model: VideoFileModel.unscoped(),
           required: true,
           where: {
             id: {
-              [Sequelize.Op.notIn]: VideosRedundancyModel.buildExcludeIn()
+              [ Sequelize.Op.notIn ]: await VideoRedundancyModel.buildExcludeIn()
             }
           }
+        },
+        {
+          attributes: [],
+          model: VideoChannelModel.unscoped(),
+          required: true,
+          include: [
+            {
+              attributes: [],
+              model: ActorModel.unscoped(),
+              required: true,
+              include: [
+                {
+                  attributes: [],
+                  model: ServerModel.unscoped(),
+                  required: true,
+                  where: {
+                    redundancyAllowed: true
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     }
 
-    return VideoModel.findOne(query)
+    const rows = await VideoModel.unscoped().findAll(query)
+
+    return sample(rows)
   }
 
   static async getVideoFiles (strategy: VideoRedundancyStrategy) {
@@ -171,12 +201,13 @@ export class VideosRedundancyModel extends Model<VideosRedundancyModel> {
       }
     }
 
-    return VideosRedundancyModel.scope(ScopeNames.WITH_VIDEO)
-                                .findAll(queryVideoFiles)
+    return VideoRedundancyModel.scope(ScopeNames.WITH_VIDEO)
+                               .findAll(queryVideoFiles)
   }
 
   static listAllExpired () {
     const query = {
+      logging: !isTestInstance(),
       where: {
         expiresOn: {
           [Sequelize.Op.lt]: new Date()
@@ -184,8 +215,8 @@ export class VideosRedundancyModel extends Model<VideosRedundancyModel> {
       }
     }
 
-    return VideosRedundancyModel.scope(ScopeNames.WITH_VIDEO)
-      .findAll(query)
+    return VideoRedundancyModel.scope(ScopeNames.WITH_VIDEO)
+                               .findAll(query)
   }
 
   toActivityPubObject (): CacheFileObject {
@@ -210,7 +241,7 @@ export class VideosRedundancyModel extends Model<VideosRedundancyModel> {
 
     return Sequelize.literal(
       '(' +
-        `SELECT "videoFileId" FROM "videosRedundancy" WHERE "actorId" = ${actor.id} AND "expiresOn" < NOW()` +
+        `SELECT "videoFileId" FROM "videoRedundancy" WHERE "actorId" = ${actor.id} AND "expiresOn" >= NOW()` +
       ')'
     )
   }

@@ -12,8 +12,7 @@ import { addVideoComment, resolveThread } from '../video-comments'
 import { getOrCreateVideoAndAccountAndChannel } from '../videos'
 import { forwardActivity, forwardVideoRelatedActivity } from '../send/utils'
 import { Redis } from '../../redis'
-import { VideosRedundancyModel } from '../../../models/redundancy/videos-redundancy'
-import { cacheFileActivityObjectToDBAttributes, createCacheFile } from '../cache-file'
+import { createCacheFile } from '../cache-file'
 
 async function processCreateActivity (activity: ActivityCreate) {
   const activityObject = activity.object

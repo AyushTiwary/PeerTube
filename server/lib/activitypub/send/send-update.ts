@@ -11,7 +11,7 @@ import { broadcastToFollowers, unicastTo } from './utils'
 import { audiencify, getActorsInvolvedInVideo, getAudience, getObjectFollowersAudience } from '../audience'
 import { logger } from '../../../helpers/logger'
 import { VideoCaptionModel } from '../../../models/video/video-caption'
-import { VideosRedundancyModel } from '../../../models/redundancy/videos-redundancy'
+import { VideoRedundancyModel } from '../../../models/redundancy/video-redundancy'
 
 async function sendUpdateVideo (video: VideoModel, t: Transaction, overrodeByActor?: ActorModel) {
   logger.info('Creating job to update video %s.', video.url)
@@ -58,7 +58,7 @@ async function sendUpdateActor (accountOrChannel: AccountModel | VideoChannelMod
   return broadcastToFollowers(data, byActor, actorsInvolved, t)
 }
 
-async function sendUpdateCacheFile (byActor: ActorModel, redundancyModel: VideosRedundancyModel) {
+async function sendUpdateCacheFile (byActor: ActorModel, redundancyModel: VideoRedundancyModel) {
   logger.info('Creating job to update cache file %s.', redundancyModel.url)
 
   const url = getUpdateActivityPubUrl(redundancyModel.url, redundancyModel.updatedAt.toISOString())
