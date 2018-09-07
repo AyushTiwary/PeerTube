@@ -26,12 +26,12 @@ async function sendUpdateVideo (video: VideoModel, t: Transaction, overrodeByAct
   const videoObject = video.toActivityPubObject()
   const audience = getAudience(byActor, video.privacy === VideoPrivacy.PUBLIC)
 
-  const data = updateActivityData(url, byActor, videoObject, audience)
+  const updateActivity = buildUpdateActivity(url, byActor, videoObject, audience)
 
-  const actorsInvolved = await VideoShareModel.loadActorsByShare(video.id, t)
-  actorsInvolved.push(byActor)
+  const actorsInvolved = await getActorsInvolvedInVideo(video, t)
+  if (overrodeByActor) actorsInvolved.push(overrodeByActor)
 
-  return broadcastToFollowers(data, byActor, actorsInvolved, t)
+  return broadcastToFollowers(updateActivity, byActor, actorsInvolved, t)
 }
 
 async function sendUpdateActor (accountOrChannel: AccountModel | VideoChannelModel, t: Transaction) {
@@ -42,7 +42,7 @@ async function sendUpdateActor (accountOrChannel: AccountModel | VideoChannelMod
   const url = getUpdateActivityPubUrl(byActor.url, byActor.updatedAt.toISOString())
   const accountOrChannelObject = accountOrChannel.toActivityPubObject()
   const audience = getAudience(byActor)
-  const data = updateActivityData(url, byActor, accountOrChannelObject, audience)
+  const updateActivity = buildUpdateActivity(url, byActor, accountOrChannelObject, audience)
 
   let actorsInvolved: ActorModel[]
   if (accountOrChannel instanceof AccountModel) {
@@ -55,7 +55,7 @@ async function sendUpdateActor (accountOrChannel: AccountModel | VideoChannelMod
 
   actorsInvolved.push(byActor)
 
-  return broadcastToFollowers(data, byActor, actorsInvolved, t)
+  return broadcastToFollowers(updateActivity, byActor, actorsInvolved, t)
 }
 
 async function sendUpdateCacheFile (byActor: ActorModel, redundancyModel: VideoRedundancyModel) {
@@ -69,9 +69,8 @@ async function sendUpdateCacheFile (byActor: ActorModel, redundancyModel: VideoR
   const accountsInvolvedInVideo = await getActorsInvolvedInVideo(video, undefined)
   const audience = getObjectFollowersAudience(accountsInvolvedInVideo)
 
-  const data = updateActivityData(url, byActor, redundancyObject, audience)
-  return unicastTo(data, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
-
+  const updateActivity = buildUpdateActivity(url, byActor, redundancyObject, audience)
+  return unicastTo(updateActivity, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +83,7 @@ export {
 
 // ---------------------------------------------------------------------------
 
-function updateActivityData (url: string, byActor: ActorModel, object: any, audience?: ActivityAudience): ActivityUpdate {
+function buildUpdateActivity (url: string, byActor: ActorModel, object: any, audience?: ActivityAudience): ActivityUpdate {
   if (!audience) audience = getAudience(byActor)
 
   return audiencify(

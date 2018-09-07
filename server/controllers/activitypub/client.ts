@@ -3,9 +3,9 @@ import * as express from 'express'
 import { VideoPrivacy, VideoRateType } from '../../../shared/models/videos'
 import { activityPubCollectionPagination, activityPubContextify } from '../../helpers/activitypub'
 import { CONFIG, ROUTE_CACHE_LIFETIME } from '../../initializers'
-import { buildVideoAnnounce } from '../../lib/activitypub/send'
+import { buildAnnounceWithVideoAudience } from '../../lib/activitypub/send'
 import { audiencify, getAudience } from '../../lib/activitypub/audience'
-import { createActivityData } from '../../lib/activitypub/send/send-create'
+import { buildCreateActivity } from '../../lib/activitypub/send/send-create'
 import { asyncMiddleware, executeIfActivityPub, localAccountValidator, localVideoChannelValidator } from '../../middlewares'
 import { videosGetValidator, videosShareValidator } from '../../middlewares/validators'
 import { videoCommentGetValidator } from '../../middlewares/validators/video-comments'
@@ -138,7 +138,7 @@ async function videoController (req: express.Request, res: express.Response, nex
   const videoObject = audiencify(video.toActivityPubObject(), audience)
 
   if (req.path.endsWith('/activity')) {
-    const data = createActivityData(video.url, video.VideoChannel.Account.Actor, videoObject, audience)
+    const data = buildCreateActivity(video.url, video.VideoChannel.Account.Actor, videoObject, audience)
     return activityPubResponse(activityPubContextify(data), res)
   }
 
@@ -147,9 +147,9 @@ async function videoController (req: express.Request, res: express.Response, nex
 
 async function videoAnnounceController (req: express.Request, res: express.Response, next: express.NextFunction) {
   const share = res.locals.videoShare as VideoShareModel
-  const object = await buildVideoAnnounce(share.Actor, share, res.locals.video, undefined)
+  const { activity } = await buildAnnounceWithVideoAudience(share.Actor, share, res.locals.video, undefined)
 
-  return activityPubResponse(activityPubContextify(object), res)
+  return activityPubResponse(activityPubContextify(activity), res)
 }
 
 async function videoAnnouncesController (req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -226,7 +226,7 @@ async function videoCommentController (req: express.Request, res: express.Respon
   const videoCommentObject = audiencify(videoComment.toActivityPubObject(threadParentComments), audience)
 
   if (req.path.endsWith('/activity')) {
-    const data = createActivityData(videoComment.url, videoComment.Account.Actor, videoCommentObject, audience)
+    const data = buildCreateActivity(videoComment.url, videoComment.Account.Actor, videoCommentObject, audience)
     return activityPubResponse(activityPubContextify(data), res)
   }
 
@@ -241,7 +241,7 @@ async function videoRedundancyController (req: express.Request, res: express.Res
   const object = audiencify(videoRedundancy.toActivityPubObject(), audience)
 
   if (req.path.endsWith('/activity')) {
-    const data = createActivityData(videoRedundancy.url, serverActor, object, audience)
+    const data = buildCreateActivity(videoRedundancy.url, serverActor, object, audience)
     return activityPubResponse(activityPubContextify(data), res)
   }
 

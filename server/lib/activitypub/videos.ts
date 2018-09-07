@@ -327,11 +327,8 @@ async function refreshVideoIfNeeded (video: VideoModel): Promise<VideoModel> {
 
     const channelActor = await getOrCreateVideoChannelFromVideoObject(videoObject)
     const account = await AccountModel.load(channelActor.VideoChannel.accountId)
-    await updateVideoFromAP(video, videoObject, account.Actor, channelActor)
 
-    video.VideoChannel = channelActor.VideoChannel
-
-    return video
+    return updateVideoFromAP(video, videoObject, account, channelActor.VideoChannel)
   } catch (err) {
     logger.warn('Cannot refresh video.', { err })
     return video
@@ -341,8 +338,8 @@ async function refreshVideoIfNeeded (video: VideoModel): Promise<VideoModel> {
 async function updateVideoFromAP (
   video: VideoModel,
   videoObject: VideoTorrentObject,
-  accountActor: ActorModel,
-  channelActor: ActorModel,
+  account: AccountModel,
+  channel: VideoChannelModel,
   overrideTo?: string[]
 ) {
   logger.debug('Updating remote video "%s".', videoObject.uuid)
@@ -358,12 +355,12 @@ async function updateVideoFromAP (
 
       // Check actor has the right to update the video
       const videoChannel = video.VideoChannel
-      if (videoChannel.Account.Actor.id !== accountActor.id) {
-        throw new Error('Account ' + accountActor.url + ' does not own video channel ' + videoChannel.Actor.url)
+      if (videoChannel.Account.id !== account.id) {
+        throw new Error('Account ' + account.Actor.url + ' does not own video channel ' + videoChannel.Actor.url)
       }
 
       const to = overrideTo ? overrideTo : videoObject.to
-      const videoData = await videoActivityObjectToDBAttributes(channelActor.VideoChannel, videoObject, to)
+      const videoData = await videoActivityObjectToDBAttributes(channel, videoObject, to)
       video.set('name', videoData.name)
       video.set('uuid', videoData.uuid)
       video.set('url', videoData.url)

@@ -13,11 +13,11 @@ import { VideoModel } from '../../../models/video/video'
 import { getActorFollowActivityPubUrl, getUndoActivityPubUrl, getVideoDislikeActivityPubUrl, getVideoLikeActivityPubUrl } from '../url'
 import { broadcastToFollowers, unicastTo } from './utils'
 import { audiencify, getActorsInvolvedInVideo, getAudience, getObjectFollowersAudience, getVideoAudience } from '../audience'
-import { createActivityData, createDislikeActivityData } from './send-create'
-import { followActivityData } from './send-follow'
-import { likeActivityData } from './send-like'
+import { buildCreateActivity, buildDislikeActivity } from './send-create'
+import { buildFollowActivity } from './send-follow'
+import { buildLikeActivity } from './send-like'
 import { VideoShareModel } from '../../../models/video/video-share'
-import { buildVideoAnnounce } from './send-announce'
+import { buildAnnounceWithVideoAudience } from './send-announce'
 import { logger } from '../../../helpers/logger'
 import { VideoRedundancyModel } from '../../../models/redundancy/video-redundancy'
 
@@ -33,10 +33,10 @@ async function sendUndoFollow (actorFollow: ActorFollowModel, t: Transaction) {
   const followUrl = getActorFollowActivityPubUrl(actorFollow)
   const undoUrl = getUndoActivityPubUrl(followUrl)
 
-  const object = followActivityData(followUrl, me, following)
-  const data = undoActivityData(undoUrl, me, object)
+  const followActivity = buildFollowActivity(followUrl, me, following)
+  const undoActivity = undoActivityData(undoUrl, me, followActivity)
 
-  return unicastTo(data, me, following.inboxUrl)
+  return unicastTo(undoActivity, me, following.inboxUrl)
 }
 
 async function sendUndoLike (byActor: ActorModel, video: VideoModel, t: Transaction) {
@@ -46,21 +46,21 @@ async function sendUndoLike (byActor: ActorModel, video: VideoModel, t: Transact
   const undoUrl = getUndoActivityPubUrl(likeUrl)
 
   const actorsInvolvedInVideo = await getActorsInvolvedInVideo(video, t)
-  const object = likeActivityData(likeUrl, byActor, video)
+  const likeActivity = buildLikeActivity(likeUrl, byActor, video)
 
   // Send to origin
   if (video.isOwned() === false) {
     const audience = getVideoAudience(video, actorsInvolvedInVideo)
-    const data = undoActivityData(undoUrl, byActor, object, audience)
+    const undoActivity = undoActivityData(undoUrl, byActor, likeActivity, audience)
 
-    return unicastTo(data, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
+    return unicastTo(undoActivity, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
   }
 
   const audience = getObjectFollowersAudience(actorsInvolvedInVideo)
-  const data = undoActivityData(undoUrl, byActor, object, audience)
+  const undoActivity = undoActivityData(undoUrl, byActor, likeActivity, audience)
 
   const followersException = [ byActor ]
-  return broadcastToFollowers(data, byActor, actorsInvolvedInVideo, t, followersException)
+  return broadcastToFollowers(undoActivity, byActor, actorsInvolvedInVideo, t, followersException)
 }
 
 async function sendUndoDislike (byActor: ActorModel, video: VideoModel, t: Transaction) {
@@ -70,20 +70,20 @@ async function sendUndoDislike (byActor: ActorModel, video: VideoModel, t: Trans
   const undoUrl = getUndoActivityPubUrl(dislikeUrl)
 
   const actorsInvolvedInVideo = await getActorsInvolvedInVideo(video, t)
-  const dislikeActivity = createDislikeActivityData(byActor, video)
-  const object = createActivityData(dislikeUrl, byActor, dislikeActivity)
+  const dislikeActivity = buildDislikeActivity(byActor, video)
+  const createDislikeActivity = buildCreateActivity(dislikeUrl, byActor, dislikeActivity)
 
   if (video.isOwned() === false) {
     const audience = getVideoAudience(video, actorsInvolvedInVideo)
-    const data = undoActivityData(undoUrl, byActor, object, audience)
+    const undoActivity = undoActivityData(undoUrl, byActor, createDislikeActivity, audience)
 
-    return unicastTo(data, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
+    return unicastTo(undoActivity, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
   }
 
-  const data = undoActivityData(undoUrl, byActor, object)
+  const undoActivity = undoActivityData(undoUrl, byActor, createDislikeActivity)
 
   const followersException = [ byActor ]
-  return broadcastToFollowers(data, byActor, actorsInvolvedInVideo, t, followersException)
+  return broadcastToFollowers(undoActivity, byActor, actorsInvolvedInVideo, t, followersException)
 }
 
 async function sendUndoAnnounce (byActor: ActorModel, videoShare: VideoShareModel, video: VideoModel, t: Transaction) {
@@ -91,12 +91,11 @@ async function sendUndoAnnounce (byActor: ActorModel, videoShare: VideoShareMode
 
   const undoUrl = getUndoActivityPubUrl(videoShare.url)
 
-  const actorsInvolvedInVideo = await getActorsInvolvedInVideo(video, t)
-  const object = await buildVideoAnnounce(byActor, videoShare, video, t)
-  const data = undoActivityData(undoUrl, byActor, object)
+  const { activity: announceActivity, actorsInvolvedInVideo } = await buildAnnounceWithVideoAudience(byActor, videoShare, video, t)
+  const undoActivity = undoActivityData(undoUrl, byActor, announceActivity)
 
   const followersException = [ byActor ]
-  return broadcastToFollowers(data, byActor, actorsInvolvedInVideo, t, followersException)
+  return broadcastToFollowers(undoActivity, byActor, actorsInvolvedInVideo, t, followersException)
 }
 
 async function sendUndoCacheFile (byActor: ActorModel, redundancyModel: VideoRedundancyModel, t: Transaction) {
@@ -108,11 +107,11 @@ async function sendUndoCacheFile (byActor: ActorModel, redundancyModel: VideoRed
   const actorsInvolvedInVideo = await getActorsInvolvedInVideo(video, t)
 
   const audience = getVideoAudience(video, actorsInvolvedInVideo)
-  const object = createActivityData(redundancyModel.url, byActor, redundancyModel.toActivityPubObject())
+  const createActivity = buildCreateActivity(redundancyModel.url, byActor, redundancyModel.toActivityPubObject())
 
-  const data = undoActivityData(undoUrl, byActor, object, audience)
+  const undoActivity = undoActivityData(undoUrl, byActor, createActivity, audience)
 
-  return unicastTo(data, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
+  return unicastTo(undoActivity, byActor, video.VideoChannel.Account.Actor.sharedInboxUrl)
 }
 
 // ---------------------------------------------------------------------------
